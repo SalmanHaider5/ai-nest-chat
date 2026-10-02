@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import configuration from "./config/configuration.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { ChatsModule } from "./modules/chats/chats.module.js";
+import { DatabaseModule } from "./database/database.module.js";
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { ChatsModule } from "./modules/chats/chats.module.js";
       isGlobal: true,
       load: [configuration],
     }),
+    DatabaseModule,
     HealthModule,
     ChatsModule,
   ],
