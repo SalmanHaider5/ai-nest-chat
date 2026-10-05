@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { LlmProvider } from './llm.provider.js';
+import type { LlmMessage } from "./llm-message.js";
 
 @Injectable()
 export class OllamaProvider implements LlmProvider {
   constructor(private readonly configService: ConfigService) {}
 
-  async generateResponse(message: string): Promise<string> {
+  async generateResponse(messages: LlmMessage[]): Promise<string> {
     const baseUrl =
       this.configService.get<string>('ollama.baseUrl') ??
       'http://localhost:11434';
@@ -17,14 +18,15 @@ export class OllamaProvider implements LlmProvider {
       controller.abort();
     }, 10000);
     try {
-      const response = await fetch(`${baseUrl}/api/generate`, {
+      console.log('Request Body:', messages);
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model,
-          prompt: message,
+          messages,
           stream: false,
         }),
       });
@@ -33,10 +35,10 @@ export class OllamaProvider implements LlmProvider {
         throw new Error(`Ollama request failed: ${response.status}`);
       }
       const data = await response.json();
-      if (!data.response) {
+      if (!data.message?.content) {
         throw new Error("Ollama returned an empty response");
       }
-      return String(data.response ?? '');
+      return String(data.message?.content ?? '');
     } catch (error) {
       console.error('Error generating response from Ollama:', error);
       throw error;
