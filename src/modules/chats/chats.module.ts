@@ -7,11 +7,13 @@ import { Chat } from "./entities/chat.entity.js";
 import { ChatMessage } from "./entities/chat-message.entity.js";
 import { ChatRepository } from "./repositories/chat.repository.js";
 import { ChatMessageRepository } from "./repositories/chat-message.repository.js";
+import { ContextModule } from "../context/context.module.js";
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([Chat, ChatMessage]),
     AiModule,
-    TypeOrmModule.forFeature([Chat, ChatMessage])
+    ContextModule,
   ],
   controllers: [ChatsController],
   providers: [
@@ -19,5 +21,6 @@ import { ChatMessageRepository } from "./repositories/chat-message.repository.js
     ChatRepository,
     ChatMessageRepository
   ],
+  exports: [ChatMessageRepository],
 })
 export class ChatsModule {}

@@ -4,34 +4,35 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import type { Chat } from "./chat.entity.js";
+} from 'typeorm';
+import type { Chat } from './chat.entity.js';
 
-@Entity("chat_messages")
+@Entity('chat_messages')
 export class ChatMessage {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({
-    type: "varchar",
+    type: 'varchar',
     length: 20,
   })
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
 
   @Column({
-    type: "text",
+    type: 'text',
   })
   content: string;
+
+  @Column({
+    type: 'integer'
+  })
+  sequence: number;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(
-    "Chat",
-    "messages",
-    {
-      onDelete: "CASCADE",
-    },
-  )
+  @ManyToOne('Chat', 'messages', {
+    onDelete: 'CASCADE',
+  })
   chat: Chat;
 }

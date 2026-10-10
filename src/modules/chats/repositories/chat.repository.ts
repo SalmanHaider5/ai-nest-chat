@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Chat } from "../entities/chat.entity.js";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Chat } from '../entities/chat.entity.js';
 
 @Injectable()
 export class ChatRepository {
@@ -21,7 +21,7 @@ export class ChatRepository {
   async findAll(): Promise<Chat[]> {
     return this.repository.find({
       order: {
-        updatedAt: "DESC",
+        updatedAt: 'DESC',
       },
     });
   }
@@ -37,6 +37,17 @@ export class ChatRepository {
   async touch(chatId: string): Promise<void> {
     await this.repository.update(chatId, {
       updatedAt: new Date(),
+    });
+  }
+
+  async updateSummary(
+    chatId: string,
+    summary: string,
+    summaryThroughMessageId: string,
+  ): Promise<void> {
+    await this.repository.update(chatId, {
+      summary,
+      summaryThroughMessageId,
     });
   }
 }
