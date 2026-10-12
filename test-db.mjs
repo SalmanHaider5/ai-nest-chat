@@ -13,13 +13,9 @@ const client = new Client({
 try {
   await client.connect();
 
-  console.log("Database connection successful");
-
   const result = await client.query(
     "SELECT current_user, current_database()",
   );
-
-  console.log(result.rows);
 
   await client.end();
 } catch (error) {

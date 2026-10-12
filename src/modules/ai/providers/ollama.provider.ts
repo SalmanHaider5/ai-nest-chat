@@ -18,7 +18,6 @@ export class OllamaProvider implements LlmProvider {
       controller.abort();
     }, 10000);
     try {
-      console.log('Request Body:', messages);
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {

@@ -51,6 +51,7 @@ export class ChatsService {
 
     return {
       chatId,
+      context,
       message: dto.message,
       response,
     };

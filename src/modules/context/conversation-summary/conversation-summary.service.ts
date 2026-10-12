@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AiService } from '../../ai/ai.service.js';
 import type { ChatMessage } from '../../chats/entities/chat-message.entity.js';
+import { CONVERSATION_SUMMARY_PROMPT } from '../prompts/conversation-summary.prompt.js';
 
 @Injectable()
 export class ConversationSummaryService {
@@ -21,14 +22,13 @@ export class ConversationSummaryService {
       .join('\n');
 
     const prompt = [
-      'Create a concise summary of this conversation for future AI responses.',
-      'Preserve important facts, user preferences, decisions, constraints, and unresolved tasks.',
-      'Do not invent information.',
-      previousSummary ? `Previous summary:\n${previousSummary}` : '',
+      CONVERSATION_SUMMARY_PROMPT,
+      previousSummary
+        ? `Existing summary:\n${previousSummary}`
+        : 'No existing summary.',
       `New conversation messages:\n${conversation}`,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+      'Produce the complete updated summary using the rules above.',
+    ].join('\n\n');
 
     return this.aiService.generateResponse([
       {
