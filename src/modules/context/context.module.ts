@@ -7,25 +7,36 @@ import { ContextManagerService } from "./context-manager/context-manager.service
 import { ConversationSummaryService } from './conversation-summary/conversation-summary.service.js';
 import { ChatRepository } from "../chats/repositories/chat.repository.js";
 import { AiModule } from "../ai/ai.module.js";
+import { ConversationFact } from './entities/conversation-fact.entity.js';
+import { ConversationFactRepository } from './repositories/conversation-fact.repository.js';
+import { ConversationFactService } from './conversation-fact.service.js';
+import { ConversationFactController } from './conversation-fact.controller.js';
+import { FactExtractionService } from './fact-extraction.service.js';
 
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Chat,
-      ChatMessage
+      ChatMessage,
+      ConversationFact
     ]),
     AiModule
   ],
+  controllers: [ConversationFactController],
   providers: [
     ChatRepository,
     ContextManagerService,
     ChatMessageRepository,
-    ConversationSummaryService
+    ConversationSummaryService,
+    ConversationFactRepository,
+    ConversationFactService,
+    FactExtractionService,
   ],
   exports: [
     ContextManagerService,
-    ConversationSummaryService
+    ConversationSummaryService,
+    ConversationFactService,
   ],
 })
 export class ContextModule {}

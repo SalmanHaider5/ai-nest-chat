@@ -4,6 +4,7 @@ import type { MessageDto } from './dto/message.dto.js';
 import { ChatRepository } from './repositories/chat.repository.js';
 import { ChatMessageRepository } from './repositories/chat-message.repository.js';
 import { ContextManagerService } from '../context/context-manager/context-manager.service.js';
+import { ConversationFactService } from '../context/conversation-fact.service.js';
 
 @Injectable()
 export class ChatsService {
@@ -12,6 +13,7 @@ export class ChatsService {
     private readonly contextManager: ContextManagerService,
     private readonly chatRepository: ChatRepository,
     private readonly chatMessageRepository: ChatMessageRepository,
+    private readonly conversationFactService: ConversationFactService,
   ) {}
 
   async findAll() {
@@ -48,10 +50,15 @@ export class ChatsService {
     await this.chatMessageRepository.create(chatId, 'assistant', response);
 
     await this.chatRepository.touch(chatId);
+    const facts = await this.conversationFactService.extractAndSaveFacts(
+        chatId,
+        dto.message,
+      );
 
     return {
       chatId,
       context,
+      facts,
       message: dto.message,
       response,
     };
