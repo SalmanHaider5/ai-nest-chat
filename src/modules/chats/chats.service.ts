@@ -5,6 +5,9 @@ import { ChatRepository } from './repositories/chat.repository.js';
 import { ChatMessageRepository } from './repositories/chat-message.repository.js';
 import { ContextManagerService } from '../context/context-manager/context-manager.service.js';
 import { ConversationFactService } from '../context/conversation-fact.service.js';
+import { FactQueryService } from '../context/fact-query.service.js';
+import type { LlmMessage } from '../ai/providers/llm-message.js';
+import { ConversationFact } from '../context/entities/conversation-fact.entity.js';
 
 @Injectable()
 export class ChatsService {
@@ -14,6 +17,7 @@ export class ChatsService {
     private readonly chatRepository: ChatRepository,
     private readonly chatMessageRepository: ChatMessageRepository,
     private readonly conversationFactService: ConversationFactService,
+    private readonly factQueryService: FactQueryService,
   ) {}
 
   async findAll() {
@@ -24,6 +28,9 @@ export class ChatsService {
 
   async create(dto: MessageDto) {
     let chatId = dto.chatId;
+    let context: { messages: LlmMessage[] } = { messages: [] };
+    let response: string;
+    let facts: ConversationFact[] = [];
 
     if (chatId) {
       const chat = await this.chatRepository.findById(chatId);
@@ -33,12 +40,37 @@ export class ChatsService {
       }
     }
 
-    const context = await this.contextManager.buildContext({
-      chatId,
-      message: dto.message,
-    });
+    const factKey = chatId
+      ? this.factQueryService.findFactKey(dto.message)
+      : null;
 
-    const response = await this.aiService.generateResponse(context.messages);
+    const fact =
+      factKey && chatId
+        ? await this.conversationFactService.getFact(chatId, factKey)
+        : null;
+
+    if (fact) {
+      response = `Your ${fact.key.replace(/_/g, ' ')} is ${fact.value}.`;
+    } else {
+      context = await this.contextManager.buildContext({
+        chatId,
+        message: dto.message,
+      });
+
+      if (chatId) {
+        const factsContext =
+          await this.conversationFactService.getFactsContext(chatId);
+
+        if (factsContext) {
+          context.messages.unshift({
+            role: 'system',
+            content: factsContext,
+          });
+        }
+      }
+
+      response = await this.aiService.generateResponse(context.messages);
+    }
 
     if (!chatId) {
       const chat = await this.chatRepository.create(dto.message);
@@ -46,14 +78,20 @@ export class ChatsService {
     }
 
     await this.chatMessageRepository.create(chatId, 'user', dto.message);
-
     await this.chatMessageRepository.create(chatId, 'assistant', response);
-
     await this.chatRepository.touch(chatId);
-    const facts = await this.conversationFactService.extractAndSaveFacts(
-        chatId,
-        dto.message,
-      );
+
+    // Extract facts only when the LLM handled the message.
+    if (!fact) {
+      try {
+        facts = await this.conversationFactService.extractAndSaveFacts(
+          chatId,
+          dto.message,
+        );
+      } catch (error) {
+        console.error('Fact extraction failed:', error);
+      }
+    }
 
     return {
       chatId,

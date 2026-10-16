@@ -5,7 +5,10 @@ import type { ContextResult } from '../context-result.js';
 import { ChatMessageRepository } from '../../chats/repositories/chat-message.repository.js';
 import { ConversationSummaryService } from '../conversation-summary/conversation-summary.service.js';
 import { ChatRepository } from '../../chats/repositories/chat.repository.js';
-import type { ChatMessage } from '../../chats/entities/chat-message.entity.js';
+import {
+  RECENT_MESSAGES_LIMIT,
+  SUMMARY_BATCH_SIZE,
+} from '../constants/context.constants.js';
 
 @Injectable()
 export class ContextManagerService {
@@ -22,12 +25,12 @@ export class ContextManagerService {
       const chat = await this.chatRepository.findById(dto.chatId);
 
       if (chat) {
-        // 1. Fetch messages that are not yet included in the summary.
+        // 1. Fetch messages not yet included in the summary.
         const unsummarizedMessages = chat.summaryThroughMessageId
           ? await this.chatMessageRepository.findMessagesAfter(
               dto.chatId,
               chat.summaryThroughMessageId,
-              20,
+              SUMMARY_BATCH_SIZE,
             )
           : await this.chatMessageRepository.findByChatId(dto.chatId);
 
@@ -37,7 +40,10 @@ export class ContextManagerService {
             unsummarizedMessages,
           )
         ) {
-          const summaryMessages = unsummarizedMessages.slice(0, 20);
+          const summaryMessages = unsummarizedMessages.slice(
+            0,
+            SUMMARY_BATCH_SIZE,
+          );
           const lastMessage = summaryMessages[summaryMessages.length - 1];
 
           if (lastMessage) {
@@ -53,7 +59,6 @@ export class ContextManagerService {
               lastMessage.id,
             );
 
-            // Keep the in-memory chat object in sync with the database.
             chat.summary = summary;
             chat.summaryThroughMessageId = lastMessage.id;
           }
@@ -67,14 +72,17 @@ export class ContextManagerService {
           });
         }
 
-        // 4. Fetch only messages after the current summary boundary.
+        // 4. Fetch recent messages after the summary boundary.
         const recentMessages = chat.summaryThroughMessageId
           ? await this.chatMessageRepository.findMessagesAfter(
               dto.chatId,
               chat.summaryThroughMessageId,
-              20,
+              RECENT_MESSAGES_LIMIT,
             )
-          : await this.chatMessageRepository.findRecentByChatId(dto.chatId, 20);
+          : await this.chatMessageRepository.findRecentByChatId(
+              dto.chatId,
+              RECENT_MESSAGES_LIMIT,
+            );
 
         messages.push(
           ...recentMessages.map((message) => ({

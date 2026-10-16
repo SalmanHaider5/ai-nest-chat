@@ -33,6 +33,16 @@ export class ConversationFactRepository {
     });
   }
 
+  async findByChatIdAndType(
+    chatId: string,
+    type: 'long_term' | 'temporary',
+  ): Promise<ConversationFact[]> {
+    return this.repository.find({
+      where: { chatId, type },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async findByKey(
     chatId: string,
     key: string,
@@ -44,11 +54,13 @@ export class ConversationFactRepository {
 
   async upsertMany(
     chatId: string,
-    facts: { key: string; value: string }[],
+    facts: {
+      key: string;
+      value: string;
+      type: 'long_term' | 'temporary';
+    }[],
   ): Promise<void> {
-    if (facts.length === 0) {
-      return;
-    }
+    if (facts.length === 0) return;
 
     await this.repository
       .createQueryBuilder()
@@ -59,15 +71,19 @@ export class ConversationFactRepository {
           chatId,
           key: fact.key,
           value: fact.value,
+          type: fact.type,
         })),
       )
       .onConflict(
         `("chatId", "key") WHERE "chatId" IS NOT NULL
        DO UPDATE SET
          "value" = EXCLUDED."value",
+         "type" = EXCLUDED."type",
          "updatedAt" = NOW()
        WHERE "conversation_facts"."value"
-         IS DISTINCT FROM EXCLUDED."value"`,
+         IS DISTINCT FROM EXCLUDED."value"
+          OR "conversation_facts"."type"
+         IS DISTINCT FROM EXCLUDED."type"`,
       )
       .execute();
   }

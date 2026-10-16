@@ -12,7 +12,11 @@ export class ConversationFactController {
   @Post()
   async saveFacts(
     @Param('chatId') chatId: string,
-    @Body() facts: { key: string; value: string }[],
+    @Body() facts: {
+      key: string;
+      value: string;
+      type: 'long_term' | 'temporary';
+    }[],
   ) {
     await this.factService.saveFacts(chatId, facts);
 

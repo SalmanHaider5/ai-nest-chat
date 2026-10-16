@@ -50,6 +50,13 @@ export class ConversationFact {
   })
   chatId: string | null;
 
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'long_term',
+  })
+  type: 'long_term' | 'temporary';
+
   @ManyToOne(() => Chat, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'chatId' })
   chat: Chat | null;

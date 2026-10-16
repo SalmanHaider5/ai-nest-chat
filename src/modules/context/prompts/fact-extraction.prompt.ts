@@ -1,23 +1,39 @@
+
 export const FACT_EXTRACTION_PROMPT = `
-  Extract explicit, useful facts about the user from the message below.
+  Extract useful facts from the user's message below.
 
   Rules:
   - Extract multiple facts when appropriate.
   - Include only facts stated or clearly implied by the user.
   - Do not invent facts or turn questions into preferences.
   - Use concise, consistent snake_case keys.
-  - Return an empty array if there are no useful facts.
-  - Return ONLY a valid JSON array.
-  - Each item must have exactly two fields: "key" and "value".
-  - Both "key" and "value" must be strings.
+  - Prefer "long_term" for stable user preferences and personal information.
+  - Use "temporary" for details relevant only to the current task or conversation.
+  - When uncertain, prefer "temporary".
+  - Return [] if there are no useful facts.
+  - Return ONLY a valid JSON array, without Markdown or explanations.
+  - Every array item MUST be an object with exactly three fields:
+    "key", "value", and "type".
+  - "key" and "value" MUST be strings.
+  - "type" MUST be either "long_term" or "temporary".
+  - NEVER return nested arrays.
 
-  Example:
-  Message: "My favorite color is green and I prefer MySQL."
-  Output:
+  Valid example:
   [
-    { "key": "favorite_color", "value": "green" },
-    { "key": "preferred_database", "value": "MySQL" }
+    {
+      "key": "favorite_color",
+      "value": "blue",
+      "type": "long_term"
+    },
+    {
+      "key": "available_colors",
+      "value": "green, blue, red",
+      "type": "temporary"
+    }
   ]
 
+  Valid example with no facts:
+  []
+
   User message:
-`;
+`.trim();

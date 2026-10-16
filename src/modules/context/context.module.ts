@@ -12,6 +12,7 @@ import { ConversationFactRepository } from './repositories/conversation-fact.rep
 import { ConversationFactService } from './conversation-fact.service.js';
 import { ConversationFactController } from './conversation-fact.controller.js';
 import { FactExtractionService } from './fact-extraction.service.js';
+import { FactQueryService } from './fact-query.service.js';
 
 
 @Module({
@@ -32,11 +33,13 @@ import { FactExtractionService } from './fact-extraction.service.js';
     ConversationFactRepository,
     ConversationFactService,
     FactExtractionService,
+    FactQueryService,
   ],
   exports: [
     ContextManagerService,
     ConversationSummaryService,
     ConversationFactService,
+    FactQueryService,
   ],
 })
 export class ContextModule {}
