@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { LlmProvider } from "./providers/llm.provider.js";
 import { LLM_PROVIDER } from "./providers/llm-provider.token.js";
+import type { LlmMessage } from "./providers/llm-message.js";
 
 @Injectable()
 export class AiService {
@@ -9,7 +10,7 @@ export class AiService {
     private readonly llmProvider: LlmProvider,
   ) {}
 
-  async generateResponse(message: string): Promise<string> {
-    return this.llmProvider.generateResponse(message);
+  async generateResponse(messages: LlmMessage[]): Promise<string> {
+    return this.llmProvider.generateResponse(messages);
   }
 }

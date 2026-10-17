@@ -1,277 +1,98 @@
-# AI Chatbot Backend
+# AI Chat Application
 
-Backend API for an enterprise-ready AI Chatbot / AI Workspace built with **NestJS, TypeScript, and modern LLM technologies**.
+A ChatGPT-like application exploring LLM integration, conversation context management, summarization, and persistent memory.
 
-The project is being developed incrementally, starting with a local LLM using **Ollama** and evolving toward RAG, AI agents, and AWS Bedrock.
+## Tech Stack
 
-## Overview
+- **Frontend:** Next.js, React, TypeScript
+- **Backend:** NestJS, TypeScript
+- **Database:** PostgreSQL, TypeORM
+- **LLM Runtime:** Ollama
+- **LLM Model:** Qwen3 1.7B
+- **Infrastructure:** Docker
 
-This backend powers the AI Workspace frontend and provides the foundation for:
-
-* Conversational AI
-* Local LLM integration
-* Chat history and persistence
-* Retrieval-Augmented Generation (RAG)
-* Document ingestion and knowledge bases
-* AI agents and tool calling
-* Streaming AI responses
-* Multiple LLM providers
-* AWS Bedrock integration
-* Enterprise-oriented AI architecture
-
-The goal is not simply to build a chatbot, but to explore how a production-oriented **GenAI application platform** can be designed and evolved.
-
-## Architecture
-
-Current high-level architecture:
-
-```text
-┌─────────────────────────┐
-│   Next.js Frontend      │
-│   React + TypeScript    │
-└────────────┬────────────┘
-             │ HTTP
-             ▼
-┌─────────────────────────┐
-│   NestJS Backend        │
-│   TypeScript            │
-├─────────────────────────┤
-│ Chat API                │
-│ AI Services             │
-│ LLM Provider Layer      │
-│ Persistence             │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│        Ollama           │
-│       Local LLM         │
-└─────────────────────────┘
-```
-
-The architecture will gradually evolve toward:
-
-```text
-Frontend
-   │
-   ▼
-NestJS API
-   │
-   ├── Chat
-   ├── AI
-   ├── LLM Providers
-   ├── RAG
-   ├── Agents
-   └── Knowledge
-         │
-         ▼
-   PostgreSQL + pgvector
-         │
-         ▼
-      LangChain
-         │
-         ▼
-      LangGraph
-         │
-         ▼
-    AWS Bedrock
-```
-
-## Technology Stack
-
-### Backend
-
-* NestJS
-* TypeScript
-* Node.js
-* REST APIs
-* Jest / Vitest
-* ESLint / Oxlint
-
-### AI
-
-* Ollama
-* Large Language Models (LLMs)
-* LangChain
-* LangGraph
-* RAG
-* Embeddings
-* Vector Search
-* Tool Calling
-* AI Agents
-* AWS Bedrock
-
-### Data & Infrastructure
-
-Planned:
-
-* PostgreSQL
-* pgvector
-* Prisma
-* Redis
-* Docker
-* Kubernetes
-* AWS
-
-## Project Structure
-
-The backend is organized around domain-oriented NestJS modules.
-
-```text
-src/
-├── modules/
-│   └── chats/
-│       ├── chats.controller.ts
-│       ├── chats.service.ts
-│       ├── chats.repository.ts
-│       ├── chats.module.ts
-│       └── dto/
-│
-├── ai/
-│   ├── ai.service.ts
-│   ├── providers/
-│   │   └── ollama.provider.ts
-│   └── ai.module.ts
-│
-└── app.module.ts
-```
-
-The structure will evolve as additional capabilities are introduced.
-
-## Environment Configuration
-
-Create a local `.env` file based on `.env.example`.
-
-Example:
-
-```env
-NODE_ENV=development
-PORT=4000
-
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
-```
-
-Never commit `.env` or credentials to the repository.
-
-## Getting Started
+## How to Run
 
 ### Prerequisites
 
-* Node.js 24+
-* Yarn
-* Ollama
+- Node.js
+- Yarn
+- Docker
+- Ollama
 
-### Install dependencies
+### 1. Start the Database
+
+Start the existing PostgreSQL container:
 
 ```bash
+docker start ai-chat-postgres
+```
+
+### 2. Start Ollama
+
+Pull the model if it is not already installed:
+
+```bash
+ollama pull qwen3:1.7b
+```
+
+Ensure Ollama is running and accessible to the backend.
+
+### 3. Start the Backend
+
+```bash
+cd ai-nest-chat
 yarn install
 ```
 
-### Configure environment
+Configure the required environment variables for PostgreSQL and Ollama.
+
+Run database migrations:
 
 ```bash
-cp .env.example .env
+yarn typeorm-ts-node-esm migration:run -d src/database/data-source.ts
 ```
 
-On Windows, the `.env` file can also be created manually from `.env.example`.
-
-### Start the development server
+Start the backend:
 
 ```bash
-yarn start:dev
+yarn start
 ```
 
-The API will run on:
+### 4. Start the Frontend
 
-```text
-http://localhost:4000
+Open a separate terminal:
+
+```bash
+cd ai-next-chat
+yarn install
+yarn start
 ```
 
-## Development Roadmap
+Open the local URL displayed in the terminal, usually `http://localhost:3000`.
 
-### Phase 1 — Backend Foundation
+## Implemented Features
 
-* [x] NestJS application
-* [x] TypeScript
-* [x] Git/GitHub
-* [ ] Environment configuration
-* [ ] Health check endpoint
-* [ ] Global configuration module
-* [ ] API structure
+- **LLM Integration:** Generates conversational responses using a locally running language model.
+- **Conversation Management:** Supports multiple chats with persistent message history.
+- **Context Management:** Constructs LLM context using the current message and relevant conversation history.
+- **Conversation Summarization:** Summarizes older messages to reduce the amount of historical context sent to the LLM.
+- **Summary Boundaries:** Tracks summarized messages to prevent repeatedly processing the same conversation history.
+- **Recent Message Window:** Combines summaries with recent messages to preserve conversational continuity.
+- **Fact Extraction:** Extracts structured facts from user messages using an LLM.
+- **Persistent Memory:** Stores long-term user facts separately from temporary, chat-specific facts.
+- **Memory Context Injection:** Includes relevant stored facts in the context provided to the LLM.
+- **Direct Fact Lookup:** Attempts to answer certain fact-based questions directly from stored memory without generating a full LLM response.
+- **Fact Scoping:** Separates global user facts from temporary facts associated with individual chats.
 
-### Phase 2 — Chat API
+## What's Next
 
-* [ ] Chat endpoints
-* [ ] Message model
-* [ ] Request validation
-* [ ] Chat state management
-* [ ] Streaming responses
-
-### Phase 3 — LLM Integration
-
-* [ ] LLM provider abstraction
-* [ ] Ollama integration
-* [ ] Model configuration
-* [ ] Prompt management
-* [ ] Error handling
-* [ ] Token/usage tracking
-
-### Phase 4 — Persistence
-
-* [ ] PostgreSQL
-* [ ] Prisma
-* [ ] Chat persistence
-* [ ] Message persistence
-* [ ] Redis
-* [ ] Conversation caching
-
-### Phase 5 — RAG
-
-* [ ] Document upload
-* [ ] Document processing
-* [ ] Chunking
-* [ ] Embeddings
-* [ ] pgvector
-* [ ] Semantic search
-* [ ] Source citations
-
-### Phase 6 — AI Agents
-
-* [ ] Tool calling
-* [ ] LangChain
-* [ ] LangGraph
-* [ ] Agent workflows
-* [ ] Multi-step reasoning workflows
-* [ ] Human-in-the-loop workflows
-
-### Phase 7 — AWS / Production AI
-
-* [ ] AWS Bedrock
-* [ ] Provider abstraction
-* [ ] Cloud deployment
-* [ ] Observability
-* [ ] Security
-* [ ] Production architecture
-
-## Related Project
-
-Frontend:
-
-**AI Chat Workspace**
-
-The frontend is built with Next.js, React, TypeScript, and Ant Design.
-
-## Goals
-
-This project is being built as a hands-on exploration of modern **Generative AI application architecture**, with emphasis on:
-
-* Production-oriented backend design
-* LLM integration
-* RAG architecture
-* Agentic workflows
-* Provider abstraction
-* Cloud AI architecture
-* Enterprise application patterns
-
-The implementation intentionally evolves from a simple local chatbot into a more capable AI application platform.
+- **Embedding Vectors:** Understand how text is converted into numerical vectors representing semantic meaning.
+- **Embedding Models:** Explore model selection, retrieval quality, latency, and cost.
+- **Vector Storage:** Store and search embeddings using PostgreSQL with `pgvector`.
+- **Semantic Search:** Retrieve relevant information based on meaning rather than exact keyword matching.
+- **RAG (Retrieval-Augmented Generation):** Retrieve relevant document chunks and provide them to the LLM as context for grounded responses.
+- **Document Ingestion:** Implement document loading, text extraction, chunking, and embedding generation.
+- **Retrieval Optimization:** Explore metadata filtering, hybrid search, and reranking.
+- **LangChain Integration:** Explore LangChain for organizing embedding, retrieval, and RAG workflows.
+- **Evaluation and Optimization:** Measure retrieval accuracy, response quality, latency, and token usage.

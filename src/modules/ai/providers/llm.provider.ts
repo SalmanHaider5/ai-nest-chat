@@ -1,3 +1,5 @@
+import type { LlmMessage } from "./llm-message.js";
+
 export interface LlmProvider {
-  generateResponse(message: string): Promise<string>;
+  generateResponse(messages: LlmMessage[]): Promise<string>;
 }
