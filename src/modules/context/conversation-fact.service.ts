@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConversationFactRepository } from './repositories/conversation-fact.repository.js';
 import { ConversationFact } from './entities/conversation-fact.entity.js';
 import { FactExtractionService } from './fact-extraction.service.js';
+import { FactQueryService } from './fact-query.service.js';
 import { FACT_CONTEXT_PROMPT } from './prompts/fact-context.prompt.js';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class ConversationFactService {
   constructor(
     private readonly factRepository: ConversationFactRepository,
     private readonly factExtractionService: FactExtractionService,
+    private readonly factQueryService: FactQueryService,
   ) {}
 
   async saveFact(
@@ -24,6 +26,10 @@ export class ConversationFactService {
     return this.factRepository.findByChatId(chatId);
   }
 
+  async getLongTermFacts(): Promise<ConversationFact[]> {
+    return this.factRepository.findLongTermByUserId();
+  }
+
   async getFactsByType(
     chatId: string,
     type: 'long_term' | 'temporary',
@@ -33,6 +39,10 @@ export class ConversationFactService {
 
   async getFact(chatId: string, key: string): Promise<ConversationFact | null> {
     return this.factRepository.findByKey(chatId, key);
+  }
+
+  async getLongTermFact(key: string): Promise<ConversationFact | null> {
+    return this.factRepository.findLongTermByKey(key);
   }
 
   async saveFacts(
@@ -54,12 +64,17 @@ export class ConversationFactService {
 
     await this.factRepository.upsertMany(chatId, facts);
 
-    return this.factRepository.findByChatId(chatId);
+    const [longTermFacts, temporaryFacts] = await Promise.all([
+      this.getLongTermFacts(),
+      this.factRepository.findByChatIdAndType(chatId, 'temporary'),
+    ]);
+
+    return [...longTermFacts, ...temporaryFacts];
   }
 
   async getFactsContext(chatId: string): Promise<string | null> {
     const [longTermFacts, temporaryFacts] = await Promise.all([
-      this.factRepository.findByChatIdAndType(chatId, 'long_term'),
+      this.getLongTermFacts(),
       this.factRepository.findByChatIdAndType(chatId, 'temporary'),
     ]);
 
@@ -83,5 +98,45 @@ export class ConversationFactService {
       .join('\n\n');
 
     return FACT_CONTEXT_PROMPT.replace('{{facts}}', formattedFacts);
+  }
+
+  async getRelevantFacts(
+    chatId: string,
+    message: string,
+  ): Promise<ConversationFact[]> {
+    const relevantKeys = this.factQueryService.findRelevantFactKeys(message);
+
+    if (relevantKeys.length === 0) {
+      return [];
+    }
+
+    const [longTermFacts, temporaryFacts] = await Promise.all([
+      this.getLongTermFacts(),
+      this.getFactsByType(chatId, 'temporary'),
+    ]);
+
+    return [...longTermFacts, ...temporaryFacts].filter((fact) =>
+      relevantKeys.includes(fact.key),
+    );
+  }
+
+  async getRelevantFactsByStoredKeys(
+    chatId: string,
+    message: string,
+  ): Promise<ConversationFact[]> {
+    const [longTermFacts, temporaryFacts] = await Promise.all([
+      this.getLongTermFacts(),
+      this.getFactsByType(chatId, 'temporary'),
+    ]);
+
+    const allFacts = [...longTermFacts, ...temporaryFacts];
+
+    const relevantKeys =
+      await this.factQueryService.findRelevantFactKeysFromStoredKeys(
+        message,
+        allFacts.map((fact) => fact.key),
+      );
+
+    return allFacts.filter((fact) => relevantKeys.includes(fact.key));
   }
 }

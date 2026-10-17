@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { ConversationFact } from '../entities/conversation-fact.entity.js';
+import { LOCAL_USER_ID } from '../constants/local-user.constants.js';
 
 @Injectable()
 export class ConversationFactRepository {
@@ -43,6 +44,28 @@ export class ConversationFactRepository {
     });
   }
 
+  async findLongTermByUserId(): Promise<ConversationFact[]> {
+    return this.repository.find({
+      where: {
+        userId: LOCAL_USER_ID,
+        chatId: IsNull(),
+        type: 'long_term',
+      },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async findLongTermByKey(key: string): Promise<ConversationFact | null> {
+    return this.repository.findOne({
+      where: {
+        userId: LOCAL_USER_ID,
+        chatId: IsNull(),
+        type: 'long_term',
+        key,
+      },
+    });
+  }
+
   async findByKey(
     chatId: string,
     key: string,
@@ -60,31 +83,65 @@ export class ConversationFactRepository {
       type: 'long_term' | 'temporary';
     }[],
   ): Promise<void> {
-    if (facts.length === 0) return;
+    const longTermFacts = facts.filter((fact) => fact.type === 'long_term');
 
-    await this.repository
-      .createQueryBuilder()
-      .insert()
-      .into(ConversationFact)
-      .values(
-        facts.map((fact) => ({
-          chatId,
-          key: fact.key,
-          value: fact.value,
-          type: fact.type,
-        })),
-      )
-      .onConflict(
-        `("chatId", "key") WHERE "chatId" IS NOT NULL
-       DO UPDATE SET
-         "value" = EXCLUDED."value",
-         "type" = EXCLUDED."type",
-         "updatedAt" = NOW()
-       WHERE "conversation_facts"."value"
-         IS DISTINCT FROM EXCLUDED."value"
-          OR "conversation_facts"."type"
-         IS DISTINCT FROM EXCLUDED."type"`,
-      )
-      .execute();
+    const temporaryFacts = facts.filter((fact) => fact.type === 'temporary');
+
+    if (longTermFacts.length > 0) {
+      await this.repository
+        .createQueryBuilder()
+        .insert()
+        .into(ConversationFact)
+        .values(
+          longTermFacts.map((fact) => ({
+            userId: LOCAL_USER_ID,
+            chatId: null,
+            key: fact.key,
+            value: fact.value,
+            type: fact.type,
+          })),
+        )
+        .onConflict(
+          `("userId", "key")
+         WHERE "userId" IS NOT NULL AND "chatId" IS NULL
+         DO UPDATE SET
+           "value" = EXCLUDED."value",
+           "type" = EXCLUDED."type",
+           "updatedAt" = NOW()
+         WHERE "conversation_facts"."value"
+           IS DISTINCT FROM EXCLUDED."value"
+            OR "conversation_facts"."type"
+           IS DISTINCT FROM EXCLUDED."type"`,
+        )
+        .execute();
+    }
+
+    if (temporaryFacts.length > 0) {
+      await this.repository
+        .createQueryBuilder()
+        .insert()
+        .into(ConversationFact)
+        .values(
+          temporaryFacts.map((fact) => ({
+            userId: null,
+            chatId,
+            key: fact.key,
+            value: fact.value,
+            type: fact.type,
+          })),
+        )
+        .onConflict(
+          `("chatId", "key") WHERE "chatId" IS NOT NULL
+         DO UPDATE SET
+           "value" = EXCLUDED."value",
+           "type" = EXCLUDED."type",
+           "updatedAt" = NOW()
+         WHERE "conversation_facts"."value"
+           IS DISTINCT FROM EXCLUDED."value"
+            OR "conversation_facts"."type"
+           IS DISTINCT FROM EXCLUDED."type"`,
+        )
+        .execute();
+    }
   }
 }

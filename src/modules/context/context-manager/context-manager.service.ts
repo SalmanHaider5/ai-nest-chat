@@ -5,6 +5,7 @@ import type { ContextResult } from '../context-result.js';
 import { ChatMessageRepository } from '../../chats/repositories/chat-message.repository.js';
 import { ConversationSummaryService } from '../conversation-summary/conversation-summary.service.js';
 import { ChatRepository } from '../../chats/repositories/chat.repository.js';
+import { ConversationFactService } from '../conversation-fact.service.js';
 import {
   RECENT_MESSAGES_LIMIT,
   SUMMARY_BATCH_SIZE,
@@ -16,6 +17,7 @@ export class ContextManagerService {
     private readonly chatMessageRepository: ChatMessageRepository,
     private readonly chatRepository: ChatRepository,
     private readonly conversationSummaryService: ConversationSummaryService,
+    private readonly conversationFactService: ConversationFactService,
   ) {}
 
   async buildContext(dto: BuildContextDto): Promise<ContextResult> {
@@ -90,10 +92,29 @@ export class ContextManagerService {
             content: message.content,
           })),
         );
+
+        // 5. Include global long-term facts and this chat's temporary facts.
+        const relevantFacts =
+          await this.conversationFactService.getRelevantFactsByStoredKeys(
+            dto.chatId,
+            dto.message,
+          );
+
+        if (relevantFacts.length > 0) {
+          const factsContext = [
+            'Use these known facts when relevant. Do not assume facts that are not listed.',
+            ...relevantFacts.map((fact) => `${fact.key}: ${fact.value}`),
+          ].join('\n');
+
+          messages.unshift({
+            role: 'system',
+            content: factsContext,
+          });
+        }
       }
     }
 
-    // 5. Add the current message exactly once.
+    // 6. Add the current message exactly once.
     messages.push({
       role: 'user',
       content: dto.message,

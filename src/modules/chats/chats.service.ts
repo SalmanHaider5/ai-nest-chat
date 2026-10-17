@@ -32,23 +32,38 @@ export class ChatsService {
     let response: string;
     let facts: ConversationFact[] = [];
 
+    // 1. Validate the existing chat or create a new one.
     if (chatId) {
       const chat = await this.chatRepository.findById(chatId);
 
       if (!chat) {
         throw new NotFoundException('Chat not found');
       }
+    } else {
+      const chat = await this.chatRepository.create(dto.message);
+      chatId = chat.id;
     }
 
-    const factKey = chatId
-      ? this.factQueryService.findFactKey(dto.message)
+    // 2. Check whether a known fact can answer the question directly.
+    const [longTermFacts, temporaryFacts] = await Promise.all([
+      this.conversationFactService.getLongTermFacts(),
+      chatId
+        ? this.conversationFactService.getFactsByType(chatId, 'temporary')
+        : Promise.resolve([]),
+    ]);
+
+    const availableFacts = [...longTermFacts, ...temporaryFacts];
+
+    const factKey = await this.factQueryService.findFactKey(
+      dto.message,
+      availableFacts.map((fact) => fact.key),
+    );
+
+    const fact = factKey
+      ? (availableFacts.find((item) => item.key === factKey) ?? null)
       : null;
 
-    const fact =
-      factKey && chatId
-        ? await this.conversationFactService.getFact(chatId, factKey)
-        : null;
-
+    // 3. Answer directly from facts or build context and call the LLM.
     if (fact) {
       response = `Your ${fact.key.replace(/_/g, ' ')} is ${fact.value}.`;
     } else {
@@ -57,31 +72,15 @@ export class ChatsService {
         message: dto.message,
       });
 
-      if (chatId) {
-        const factsContext =
-          await this.conversationFactService.getFactsContext(chatId);
-
-        if (factsContext) {
-          context.messages.unshift({
-            role: 'system',
-            content: factsContext,
-          });
-        }
-      }
-
       response = await this.aiService.generateResponse(context.messages);
     }
 
-    if (!chatId) {
-      const chat = await this.chatRepository.create(dto.message);
-      chatId = chat.id;
-    }
-
+    // 4. Persist the conversation messages.
     await this.chatMessageRepository.create(chatId, 'user', dto.message);
     await this.chatMessageRepository.create(chatId, 'assistant', response);
     await this.chatRepository.touch(chatId);
 
-    // Extract facts only when the LLM handled the message.
+    // 5. Extract and save facts only when the LLM handled the message.
     if (!fact) {
       try {
         facts = await this.conversationFactService.extractAndSaveFacts(
